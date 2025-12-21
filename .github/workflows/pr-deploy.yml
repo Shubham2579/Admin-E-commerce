@@ -21,7 +21,7 @@ jobs:
       # Build image for both push and PR
       - name: Build Docker image
         run: |
-          IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          IMAGE=${{ secrets.DOCKER_REGISTRY }}/authecommerce:${{ github.sha }}
           docker build -t $IMAGE .
 
       # Login ONLY on push (not PR)
