@@ -1,7 +1,12 @@
 name: PR Build and Push Docker
 
 on:
+  push:
+    branches:
+      - "**"   # runs on every push to any branch
   pull_request:
+    branches:
+      - "**"   # runs on every PR
 
 jobs:
   build-and-push:
