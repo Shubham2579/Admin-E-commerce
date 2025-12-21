@@ -21,7 +21,7 @@ jobs:
       # Build image for both push and PR
       - name: Build Docker image
         run: |
-          IMAGE=${{ secrets.DOCKER_REGISTRY }}/authecommerce:${{ github.sha }}
+          IMAGE=${{ secrets.DOCKER_REGISTRY }}/authecommerce:${{ github.run_id }}
           docker build -t $IMAGE .
 
       # Login ONLY on push (not PR)
@@ -38,5 +38,5 @@ jobs:
       - name: Push Docker image
         if: github.event_name == 'push'
         run: |
-          IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.run_id }}
           docker push $IMAGE
