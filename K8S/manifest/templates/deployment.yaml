@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "authecommerce.fullname" . }}
+  name: {{ include "admin-app.fullname" . }}
   labels:
-    {{- include "authecommerce.labels" . | nindent 4 }}
+    {{- include "admin-app.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "authecommerce.selectorLabels" . | nindent 6 }}
+      {{- include "admin-app.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "authecommerce.selectorLabels" . | nindent 8 }}
+        {{- include "admin-app.selectorLabels" . | nindent 8 }}
     spec:
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -23,12 +23,15 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+
           env:
             - name: ENVIRONMENT
               value: {{ .Values.env | quote }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
