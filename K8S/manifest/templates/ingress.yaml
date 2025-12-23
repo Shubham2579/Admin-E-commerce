@@ -13,7 +13,7 @@ spec:
       - path: /
         backend:
           service:
-            name: aspnetapp
+            name: admin-ecommerce
             port:
               number: 3000
         pathType: Exact
