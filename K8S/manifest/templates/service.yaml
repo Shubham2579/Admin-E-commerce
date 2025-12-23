@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "admin-ecommerce.fullname" . | trunc 63 | trimSuffix "-" }}
+  labels:
+    app.kubernetes.io/name: {{ include "admin-ecommerce.name" . }}
+    helm.sh/chart: {{ include "admin-ecommerce.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: {{ include "admin-ecommerce.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
