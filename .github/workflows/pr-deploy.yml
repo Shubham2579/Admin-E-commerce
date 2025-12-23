@@ -16,83 +16,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify Docker
-        run: docker version
-
-      - name: Build Docker image
+      - name: Install prerequisites (docker, azure-cli, helm)
         run: |
-          IMAGE=${{ env.IMAGE_NAME_BASE }}:${{ github.run_id }}
-          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
-          docker build -t $IMAGE .
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg docker.io
 
-      - name: Log in to Docker registry (only on push)
-        if: github.event_name == 'push'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Push Docker image (only on push)
-        if: github.event_name == 'push'
-        run: |
-          IMAGE=${{ env.IMAGE_NAME_BASE }}:${{ github.run_id }}
-          docker push $IMAGE
-
-      # AKS deploy only on push
-      - name: Install Azure CLI, kubectl and yq
-        if: github.event_name == 'push'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg
+          # Install Azure CLI
           curl -sL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
           AZ_REPO=$(lsb_release -cs)
           echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | sudo tee /etc/apt/sources.list.d/azure-cli.list
-          sudo apt-get update -y
+          sudo apt-get update
           sudo apt-get install -y azure-cli
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-          sudo curl -sSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
-          sudo chmod +x /usr/local/bin/yq
 
-      - name: Setup Helm
-        if: github.event_name == 'push'
-        uses: azure/setup-helm@v3
+          # Install Helm
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Azure login (service principal)
-        if: github.event_name == 'push'
+      - name: Azure login (service principal from secrets)
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZ_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZ_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZ_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
-          az login --service-principal -u "$AZURE_CLIENT_ID" -p "$AZURE_CLIENT_SECRET" --tenant "$AZURE_TENANT_ID"
+          # login using service principal credentials stored in repository secrets
+          az login --service-principal -u "$AZ_CLIENT_ID" -p "$AZ_CLIENT_SECRET" --tenant "$AZ_TENANT_ID"
 
-      - name: Get AKS credentials
-        if: github.event_name == 'push'
+      - name: Build Docker image
         env:
-          AKS_RG: ${{ secrets.AKS_RESOURCE_GROUP }}
-          AKS_NAME: ${{ secrets.AKS_CLUSTER_NAME }}
+          IMAGE_NAME: ${{ secrets.DOCKER_REGISTRY }}
         run: |
-          az aks get-credentials --resource-group "$AKS_RG" --name "$AKS_NAME" --overwrite-existing
+          IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          echo "Building $IMAGE"
+          docker build -t $IMAGE .
 
-      - name: Prepare Helm chart version and appVersion
-        if: github.event_name == 'push'
+      - name: Docker login
         run: |
-          IMAGE_TAG=${{ github.run_id }}
-          # bump chart version so each CI run produces a unique chart version
-          yq eval ".version = \"0.1.${{ github.run_number }}\"" -i K8S/manifest/Chart.yaml
-          # set appVersion to image tag
-          yq eval ".appVersion = \"${IMAGE_TAG}\"" -i K8S/manifest/Chart.yaml
-          git --no-pager diff -- K8S/manifest/Chart.yaml || true
-          echo "IMAGE_REPO=${{ env.IMAGE_NAME_BASE }}" >> $GITHUB_ENV
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ secrets.DOCKER_REGISTRY }} -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-      - name: Helm upgrade/deploy to AKS (production namespace)
-        if: github.event_name == 'push'
+      - name: Push Docker image
         run: |
-          helm upgrade --install admin-ecommerce K8S/manifest \
-            --namespace production --create-namespace \
-            --set image.repository=${{ env.IMAGE_NAME_BASE }} \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --atomic --timeout 10m
+          IMAGE=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository }}:${{ github.sha }}
+          docker push $IMAGE
