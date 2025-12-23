@@ -8,13 +8,12 @@ metadata:
 spec:
   ingressClassName: azure-application-gateway
   rules:
-    - host: app.e-commerce-app-host.com
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: admin-ecommerce
-                port:
-                  number: 3000
+  - http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: aspnetapp
+            port:
+              number: 3000
+        pathType: Exact
