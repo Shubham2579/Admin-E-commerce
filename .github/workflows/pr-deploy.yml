@@ -93,6 +93,7 @@ jobs:
         run: |
           helm upgrade --install admin-ecommerce K8S/manifest \
             --namespace production --create-namespace \
-            --set image.repository=${{ env.IMAGE_NAME_BASE }} \
-            --set image.tag=${{ env.IMAGE_TAG }} \
-            --atomic --timeout 10m
+            --set image.repository=${IMAGE_REPO} \
+            --set image.tag=${IMAGE_TAG} \
+            --wait --timeout 3m
+
