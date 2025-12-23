@@ -1,42 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "admin-ecommerce.fullname" . | trunc 63 | trimSuffix "-" }}
+  name: {{ include "admin-app.name" . }}
   labels:
-    app.kubernetes.io/name: "{{ include "admin-ecommerce.name" . }}"
-    helm.sh/chart: "{{ include "admin-ecommerce.chart" . }}"
-    app.kubernetes.io/instance: "{{ .Release.Name }}"
-    app.kubernetes.io/managed-by: "Helm"
+    {{- include "admin-app.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: "{{ include "admin-ecommerce.name" . }}"
-      app.kubernetes.io/instance: "{{ .Release.Name }}"
+      app: {{ include "admin-app.name" . }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: "{{ include "admin-ecommerce.name" . }}"
-        app.kubernetes.io/instance: "{{ .Release.Name }}"
+        app: {{ include "admin-app.name" . }}
     spec:
       containers:
-        - name: admin-frontend
+        - name: admin-container
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: "{{ .Values.image.pullPolicy | default "IfNotPresent" }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort | default 3000 }}
-          readinessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.service.targetPort | default 3000 }}
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.service.targetPort | default 3000 }}
-            initialDelaySeconds: 15
-            periodSeconds: 20
+            - containerPort: {{ .Values.service.targetPort }}
           resources:
-{{ toYaml .Values.resources | default "{}" | nindent 12 }}
+            {{- toYaml .Values.resources | nindent 12 }}
